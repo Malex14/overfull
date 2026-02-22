@@ -1,7 +1,7 @@
-name: Create new tag on update
+name: Regular Update
 on:
-  #schedule:
-  #  - cron: '0 0 * * *' # every day at midnight
+  schedule:
+    - cron: '1 23 * * *'
   workflow_dispatch:
 
 jobs:
@@ -11,31 +11,41 @@ jobs:
             - name: Get current upstream version
               id: get_version
               run: |
-                  echo "::set-output name=upstream_version::$(curl -s "https://raw.githubusercontent.com/overleaf/toolkit/refs/heads/master/lib/config-seed/version")"
+                set -euo pipefail
+                upstream_version=$(curl -s "https://raw.githubusercontent.com/overleaf/toolkit/refs/heads/master/lib/config-seed/version")
+                echo "upstream_version=$upstream_version" >> $GITHUB_OUTPUT
 
             - name: Create tag
-              uses: actions/github-script@v5
+              uses: actions/github-script@v8
               env:
                 UPSTREAM_VERSION: ${{ steps.get_version.outputs.upstream_version }}
               with:
+                github-token: '${{ secrets.WORKFLOW_DISPATCH_TOKEN }}'
                 script: |
-                  console.log(await github.rest.git.getRef({
-                      owner: context.repo.owner,
-                      repo: context.repo.repo,
-                      ref: 'tags/v' + process.env.UPSTREAM_VERSION
-                  }));
                   if (await github.rest.git.getRef({
                     owner: context.repo.owner,
                     repo: context.repo.repo,
                     ref: 'tags/v' + process.env.UPSTREAM_VERSION
-                  })) {
-                    console.log('Tag already exists, skipping creation');
+                  })
+                      .then(() => true)
+                      .catch(() => false)
+                  ) {
+                      console.log('Tag already exists, skipping creation');
                   } else {
                       console.log('Creating tag v' + process.env.UPSTREAM_VERSION);
-                      /*github.rest.git.createRef({
-                          owner: context.repo.owner,
-                          repo: context.repo.repo,
-                          ref: 'refs/tags/v' + process.env.UPSTREAM_VERSION,
-                          sha: context.sha
-                      })*/
+                      try {
+                          await github.rest.git.createRef({
+                              owner: context.repo.owner,
+                              repo: context.repo.repo,
+                              ref: 'refs/tags/v' + process.env.UPSTREAM_VERSION,
+                              sha: context.sha
+                          });
+                          
+                          await github.rest.actions.createWorkflowDispatch({
+                              owner: context.repo.owner,
+                              repo: context.repo.repo,
+                              workflow_id: 'container.yml',
+                              ref: 'refs/tags/v' + process.env.UPSTREAM_VERSION,
+                          });
+                      } catch (e) { console.log(e); }
                   }
