@@ -1,0 +1,41 @@
+name: Create new tag on update
+on:
+  #schedule:
+  #  - cron: '0 0 * * *' # every day at midnight
+  workflow_dispatch:
+
+jobs:
+    update:
+        runs-on: ubuntu-latest
+        steps:
+            - name: Get current upstream version
+              id: get_version
+              run: |
+                  echo "::set-output name=upstream_version::$(curl -s "https://raw.githubusercontent.com/overleaf/toolkit/refs/heads/master/lib/config-seed/version")"
+
+            - name: Create tag
+              uses: actions/github-script@v5
+              env:
+                UPSTREAM_VERSION: ${{ steps.get_version.outputs.upstream_version }}
+              with:
+                script: |
+                  console.log(await github.rest.git.getRef({
+                      owner: context.repo.owner,
+                      repo: context.repo.repo,
+                      ref: 'tags/v' + process.env.UPSTREAM_VERSION
+                  }));
+                  if (await github.rest.git.getRef({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    ref: 'tags/v' + process.env.UPSTREAM_VERSION
+                  })) {
+                    console.log('Tag already exists, skipping creation');
+                  } else {
+                      console.log('Creating tag v' + process.env.UPSTREAM_VERSION);
+                      /*github.rest.git.createRef({
+                          owner: context.repo.owner,
+                          repo: context.repo.repo,
+                          ref: 'refs/tags/v' + process.env.UPSTREAM_VERSION,
+                          sha: context.sha
+                      })*/
+                  }
