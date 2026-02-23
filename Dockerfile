@@ -1,6 +1,7 @@
 ARG VERSION=latest
 FROM sharelatex/sharelatex:${VERSION}
 
+COPY ./url_proxy.patch /tmp/url_proxy.patch
 # Install TeX Live and Inkscape
 # Inkscape is required for SVG support in TeX Live
 RUN tlmgr update --self \
@@ -9,4 +10,6 @@ RUN tlmgr update --self \
     && apt update \
     && apt install -y --no-install-recommends inkscape \
     && rm -rf /var/cache/apt/archives /var/lib/apt/lists/* \
-    && tlmgr path add
+    && tlmgr path add \
+    && patch -p1 -i /tmp/url_proxy.patch \
+    && rm /tmp/url_proxy.patch

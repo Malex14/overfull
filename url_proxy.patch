@@ -1,0 +1,10 @@
+--- a/libraries/settings/Settings.js
++++ b/libraries/settings/Settings.js
+@@ -45,6 +45,7 @@
+   console.warn("No settings or defaults found. I'm flying blind.")
+ }
+ 
++settings.apis.linkedUrlProxy = { url: process.env.LINKED_URL_PROXY }
+ module.exports = settings
+ 
+ function pathIfExists(path) {
